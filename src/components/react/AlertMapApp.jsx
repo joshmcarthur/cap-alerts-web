@@ -2,6 +2,8 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  lazy,
+  Suspense,
   useMemo,
   useRef,
 } from "react";
@@ -14,7 +16,7 @@ import {
 } from "../../utils/alert-filters.js";
 import { readURLParams, updateURLParams } from "../../utils/url-params.js";
 import AppLayout from "./AppLayout.jsx";
-import MapLibreViewer from "./MapLibreViewer.jsx";
+const MapLibreViewer = lazy(() => import("./MapLibreViewer.jsx"));
 import AlertListPanel from "./AlertListPanel.jsx";
 import AlertDetailsModal from "./AlertDetailsModal.jsx";
 import FilterPanel from "./FilterPanel.jsx";
@@ -23,7 +25,7 @@ import DisclaimerModal from "./DisclaimerModal.jsx";
 export default function AlertMapApp() {
   // Data loading
   const { alerts, loading, error, retryLoading, getAlertById } =
-    useAlertData("/src/data/cap.csv");
+    useAlertData("/data/cap.csv");
 
   // State
   const [selectedAlert, setSelectedAlert] = useState(null);
@@ -257,13 +259,15 @@ export default function AlertMapApp() {
           </button>
         }
       >
-        <MapLibreViewer
-          alerts={alerts}
-          filteredAlerts={filteredAlerts}
-          selectedAlert={selectedAlert}
-          onAlertSelect={handleAlertSelect}
-          isDarkMode={isDarkMode}
-        />
+        <Suspense fallback={<div>Loading map...</div>}>
+          <MapLibreViewer
+            alerts={alerts}
+            filteredAlerts={filteredAlerts}
+            selectedAlert={selectedAlert}
+            onAlertSelect={handleAlertSelect}
+            isDarkMode={isDarkMode}
+          />
+        </Suspense>
       </AppLayout>
 
       {/* Disclaimer Modal */}
