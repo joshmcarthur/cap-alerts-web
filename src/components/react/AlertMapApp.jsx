@@ -25,7 +25,7 @@ import DisclaimerModal from "./DisclaimerModal.jsx";
 export default function AlertMapApp() {
   // Data loading
   const { alerts, loading, error, retryLoading, getAlertById } =
-    useAlertData("/data/cap.csv");
+    useAlertData("data/cap.csv");
 
   // State
   const [selectedAlert, setSelectedAlert] = useState(null);
