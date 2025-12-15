@@ -16,6 +16,7 @@ import clsx from "clsx";
 export default function AlertDetailsModal({ alert, onClose }) {
   const [showXml, setShowXml] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
 
   if (!alert) return null;
 
@@ -24,6 +25,49 @@ export default function AlertDetailsModal({ alert, onClose }) {
       await navigator.clipboard.writeText(alert.originalXml);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleShareAlert = async () => {
+    if (typeof window === "undefined") return;
+
+    const currentUrl = window.location.href;
+    const shareData = {
+      title: alert.title,
+      text: `${alert.title} - ${alert.severity} ${alert.category} Alert`,
+      url: currentUrl,
+    };
+
+    // Check if Web Share API is available
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare(shareData)
+    ) {
+      try {
+        await navigator.share(shareData);
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+      } catch (error) {
+        // User cancelled or error occurred, fall back to clipboard
+        if (error.name !== "AbortError") {
+          await copyUrlToClipboard();
+        }
+      }
+    } else {
+      // Fall back to clipboard
+      await copyUrlToClipboard();
+    }
+  };
+
+  const copyUrlToClipboard = async () => {
+    try {
+      const currentUrl = window.location.href;
+      await navigator.clipboard.writeText(currentUrl);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy URL to clipboard:", error);
     }
   };
 
@@ -272,9 +316,19 @@ export default function AlertDetailsModal({ alert, onClose }) {
 
       {/* Footer Actions */}
       <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 flex justify-end gap-2">
-        <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 dark:text-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 transition-colors shadow-sm">
-          <Share2 size={18} />
-          <span className="text-sm font-medium">Share Alert</span>
+        <button
+          onClick={handleShareAlert}
+          className={clsx(
+            "flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors shadow-sm",
+            shared
+              ? "text-green-700 bg-green-50 border-green-200 dark:text-green-300 dark:bg-green-900/20 dark:border-green-800"
+              : "text-slate-700 bg-white border-slate-200 hover:bg-slate-50 dark:text-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700",
+          )}
+        >
+          {shared ? <Check size={18} /> : <Share2 size={18} />}
+          <span className="text-sm font-medium">
+            {shared ? "Copied!" : "Share Alert"}
+          </span>
         </button>
       </div>
     </div>
