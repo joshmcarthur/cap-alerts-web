@@ -1,16 +1,23 @@
 ---
-
+import AlertMapApp from "../components/react/AlertMapApp.jsx";
+import "../styles/global.css";
 ---
 
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
+		<title>Historical Alert Map Viewer - New Zealand Emergency Alerts</title>
+		<meta
+			name="description"
+			content="Interactive map viewer for historical emergency alerts in New Zealand. For research and analysis purposes only - not for emergency use."
+		/>
 	</head>
-	<body>
-		<h1>Astro</h1>
+	<body class="flex flex-col">
+		<main id="main-content" class="w-full flex-1 relative">
+			<AlertMapApp client:only="react" />
+		</main>
 	</body>
 </html>
