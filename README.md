@@ -2,7 +2,7 @@
 
 An interactive map viewer for historical Common Alerting Protocol (CAP) emergency alerts in New Zealand. This application provides a visual interface for exploring archived emergency alert data for research, analysis, and educational purposes.
 
-> [!DANGER]
+> [!CAUTION]
 > **THIS APPLICATION IS NOT FOR EMERGENCY USE**
 >
 > This application is an archive of **historical** Common Alerting Protocol (CAP) messages for research, analysis, and educational purposes only.
@@ -46,7 +46,7 @@ The alert data used by this application follows this pipeline:
 3. **CSV Export** - The spreadsheet data is exported as CSV format
 4. **Site Build** - The CSV file is fetched and processed to build the interactive map viewer
 
-> [!INFO]
+> [!NOTE]
 > To fetch the latest data, you'll need to set up the `GOOGLE_SHEET_ID` environment variable or pass it as an argument when running the fetch command.
 
 To fetch the latest data, run:
@@ -110,16 +110,19 @@ All commands are run from the root of the project, from a terminal:
 ## Screenshots
 
 ### Main View
+
 ![Main view showing the interactive map and alert list](.github/screenshots/screenshot-main-view.png)
 
 The main interface displays an interactive map of New Zealand with alert polygons overlaid, alongside a sidebar showing the list of historical alerts with search and filtering capabilities.
 
 ### Filter Panel
+
 ![Filter panel showing various filter options](.github/screenshots/screenshot-filter-panel.png)
 
 The filter panel allows you to refine alerts by date range, severity, category, urgency, status, and message type to find specific alerts of interest.
 
 ### Alert Details
+
 ![Alert details modal showing comprehensive alert information](.github/screenshots/screenshot-alert-details.png)
 
 Clicking on any alert opens a detailed modal showing the full alert information, including the instruction text, metadata, alert history timeline, and access to the original CAP XML.
