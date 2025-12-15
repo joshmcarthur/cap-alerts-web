@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { AlertTriangle } from "lucide-react";
 import { useAlertData } from "../../hooks/useAlertData.js";
 import {
@@ -6,6 +12,7 @@ import {
   createEmptyFilters,
   getFilterOptions,
 } from "../../utils/alert-filters.js";
+import { readURLParams, updateURLParams } from "../../utils/url-params.js";
 import AppLayout from "./AppLayout.jsx";
 import MapLibreViewer from "./MapLibreViewer.jsx";
 import AlertListPanel from "./AlertListPanel.jsx";
@@ -15,7 +22,7 @@ import DisclaimerModal from "./DisclaimerModal.jsx";
 
 export default function AlertMapApp() {
   // Data loading
-  const { alerts, loading, error, retryLoading } =
+  const { alerts, loading, error, retryLoading, getAlertById } =
     useAlertData("/src/data/cap.csv");
 
   // State
@@ -26,6 +33,10 @@ export default function AlertMapApp() {
   const [filters, setFilters] = useState(createEmptyFilters());
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+
+  // Track if we've initialized from URL to prevent loops
+  const hasInitializedFromURL = useRef(false);
+  const isUpdatingURL = useRef(false);
 
   // Theme detection
   useEffect(() => {
@@ -38,6 +49,103 @@ export default function AlertMapApp() {
       return () => mediaQuery.removeEventListener("change", handler);
     }
   }, []);
+
+  // Initialize from URL query parameters on mount (after alerts are loaded)
+  useEffect(() => {
+    if (!alerts || alerts.length === 0 || hasInitializedFromURL.current) {
+      return;
+    }
+
+    const { filters: urlFilters, alertId } = readURLParams();
+    hasInitializedFromURL.current = true;
+
+    // Apply filters from URL
+    if (urlFilters) {
+      isUpdatingURL.current = true;
+      setFilters(urlFilters);
+      // Also set search term if present
+      if (urlFilters.searchText) {
+        setSearchTerm(urlFilters.searchText);
+      }
+      isUpdatingURL.current = false;
+    }
+
+    // Select alert from URL if present
+    if (alertId) {
+      const alert = getAlertById(alertId);
+      if (alert) {
+        setSelectedAlert(alert);
+      } else {
+        // Alert not found, remove from URL
+        isUpdatingURL.current = true;
+        updateURLParams({
+          filters: urlFilters || createEmptyFilters(),
+          alertId: null,
+        });
+        isUpdatingURL.current = false;
+      }
+    }
+  }, [alerts, getAlertById]);
+
+  // Update URL when filters or selectedAlert changes (but not during initialization)
+  useEffect(() => {
+    if (!hasInitializedFromURL.current || isUpdatingURL.current) {
+      return;
+    }
+
+    updateURLParams({
+      filters: {
+        ...filters,
+        searchText: searchTerm,
+      },
+      alertId: selectedAlert?.id || null,
+    });
+  }, [filters, searchTerm, selectedAlert]);
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    if (typeof window === "undefined" || !hasInitializedFromURL.current) {
+      return;
+    }
+
+    const handlePopState = () => {
+      const { filters: urlFilters, alertId } = readURLParams();
+
+      isUpdatingURL.current = true;
+
+      // Update filters
+      if (urlFilters) {
+        setFilters(urlFilters);
+        if (urlFilters.searchText) {
+          setSearchTerm(urlFilters.searchText);
+        } else {
+          setSearchTerm("");
+        }
+      }
+
+      // Update selected alert
+      if (alertId) {
+        const alert = getAlertById(alertId);
+        if (alert) {
+          setSelectedAlert(alert);
+        } else {
+          // Alert not found, clear selection and remove from URL
+          setSelectedAlert(null);
+          updateURLParams({
+            filters: urlFilters || createEmptyFilters(),
+            alertId: null,
+          });
+        }
+      } else {
+        setSelectedAlert(null);
+      }
+
+      isUpdatingURL.current = false;
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [getAlertById]);
 
   // Compute available filter options based on all alerts
   const filterOptions = useMemo(() => {
@@ -61,6 +169,7 @@ export default function AlertMapApp() {
 
   const handleCloseDetails = useCallback(() => {
     setSelectedAlert(null);
+    // URL will be updated automatically by the useEffect above
   }, []);
 
   const handleFilterChange = useCallback((newFilters) => {
