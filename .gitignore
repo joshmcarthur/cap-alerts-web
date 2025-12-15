@@ -22,4 +22,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
-src/data/*.csv
+
+# Alert data files
+public/data/*.csv
