@@ -66,6 +66,8 @@ jobs:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
 
       - name: Build
+        env:
+          ASTRO_BASE: ${{ vars.ASTRO_BASE }}
         run: npm run build
 
       - name: Setup Pages
