@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Menu,
   X,
@@ -7,7 +7,7 @@ import {
   List as ListIcon,
 } from "lucide-react";
 import clsx from "clsx";
-import { motion, useAnimation } from "framer-motion";
+import { motion } from "framer-motion";
 
 export default function AppLayout({
   children,
@@ -19,6 +19,7 @@ export default function AppLayout({
   floatingControls,
 }) {
   const [isDesktop, setIsDesktop] = useState(true);
+  const sidebarRef = useRef(null);
 
   useEffect(() => {
     const checkDesktop = () => {
@@ -75,25 +76,30 @@ export default function AppLayout({
 
       {/* Sidebar: Blended on Desktop, Bottom Sheet on Mobile */}
       <motion.aside
+        ref={sidebarRef}
         initial={false}
         animate={isSidebarOpen ? "open" : "closed"}
         variants={sidebarVariants}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         drag={!isDesktop && "y"}
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={0.7}
+        dragConstraints={{ top: -2000, bottom: 0 }}
+        dragElastic={0.1}
         dragMomentum={false}
+        whileDrag={{
+          transition: { duration: 0 },
+          // Override animation during drag to allow free movement
+        }}
         onDragEnd={handleDragEnd}
         className={clsx(
           "absolute z-10 glass",
           // Desktop Styles: Attached to left, full height
           "md:top-0 md:left-0 md:bottom-0 md:w-96 md:border-r md:shadow-xl",
-          // Mobile Styles: Bottom Sheet
-          "inset-x-0 bottom-0 top-[40vh] rounded-t-2xl border-t shadow-2xl",
+          // Mobile Styles: Bottom Sheet - tall enough to only leave close button visible with padding
+          "inset-x-0 bottom-0 top-20 rounded-t-2xl border-t shadow-2xl",
         )}
       >
         {/* Drag Handle (Mobile only) */}
-        <div className="w-full h-6 flex items-center justify-center md:hidden cursor-grab active:cursor-grabbing touch-none">
+        <div className="w-full h-6 flex items-center justify-center md:hidden cursor-grab active:cursor-grabbing touch-none pointer-events-auto">
           <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full" />
         </div>
 
