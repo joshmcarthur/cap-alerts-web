@@ -1,38 +1,7 @@
-import React, { useMemo } from "react";
-import {
-  Search,
-  Filter,
-  AlertTriangle,
-  CloudRain,
-  Flame,
-  Wind,
-  Waves,
-  Activity,
-  Info,
-  History,
-} from "lucide-react";
-import clsx from "clsx";
-
-// Map categories to icons
-const CATEGORY_ICONS = {
-  Met: CloudRain,
-  Fire: Flame,
-  Geo: Activity,
-  Marine: Waves,
-  Safety: AlertTriangle,
-  Health: Activity,
-  Env: Info,
-  Transport: Info,
-  Other: Info,
-};
-
-const SEVERITY_COLORS = {
-  Extreme: "border-l-4 border-red-600 bg-red-50 dark:bg-red-900/10",
-  Severe: "border-l-4 border-orange-500 bg-orange-50 dark:bg-orange-900/10",
-  Moderate: "border-l-4 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10",
-  Minor: "border-l-4 border-blue-400 bg-blue-50 dark:bg-blue-900/10",
-  Unknown: "border-l-4 border-slate-300 bg-slate-50 dark:bg-slate-800/50",
-};
+import React, { useMemo, useRef, useEffect, useState } from "react";
+import { List } from "react-window";
+import { Search, Filter, Info } from "lucide-react";
+import AlertItem from "./AlertItem.jsx";
 
 export default function AlertListPanel({
   alerts = [],
@@ -42,6 +11,10 @@ export default function AlertListPanel({
   onSearchChange,
   onFilterClick,
 }) {
+  const listRef = useRef(null);
+  const containerRef = useRef(null);
+  const [listHeight, setListHeight] = useState(600);
+
   const formatDate = (date) => {
     return new Intl.DateTimeFormat("en-NZ", {
       month: "short",
@@ -50,6 +23,44 @@ export default function AlertListPanel({
       minute: "2-digit",
     }).format(date);
   };
+
+  // Update list height when container size changes
+  useEffect(() => {
+    const updateHeight = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setListHeight(rect.height);
+      }
+    };
+
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, []);
+
+  // Scroll to selected alert when it changes
+  useEffect(() => {
+    if (selectedAlertId && listRef.current) {
+      const index = alerts.findIndex((alert) => alert.id === selectedAlertId);
+      if (index >= 0) {
+        listRef.current.scrollToRow({ index, align: "smart" });
+      }
+    }
+  }, [selectedAlertId, alerts]);
+
+  // Prepare data for react-window
+  const rowProps = useMemo(
+    () => ({
+      alerts,
+      selectedAlertId,
+      onAlertSelect,
+      formatDate,
+    }),
+    [alerts, selectedAlertId, onAlertSelect],
+  );
+
+  // Estimate item height (adjust based on your actual item height)
+  const ITEM_HEIGHT = 140; // Approximate height including margin
 
   return (
     <div className="flex flex-col h-full bg-white/50 dark:bg-slate-900">
@@ -91,59 +102,22 @@ export default function AlertListPanel({
         </div>
       </div>
 
-      {/* Alert List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+      {/* Virtualized Alert List */}
+      <div ref={containerRef} className="flex-1 overflow-hidden">
         {alerts.length === 0 ? (
           <div className="text-center p-8 text-slate-500">
             <Info className="mx-auto mb-2 opacity-50" size={32} />
             <p>No alerts match your search.</p>
           </div>
         ) : (
-          alerts.map((alert) => {
-            const Icon = CATEGORY_ICONS[alert.category] || Info;
-            const isSelected = selectedAlertId === alert.id;
-
-            return (
-              <div
-                key={alert.id}
-                onClick={() => onAlertSelect(alert)}
-                className={clsx(
-                  "p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md",
-                  SEVERITY_COLORS[alert.severity] || SEVERITY_COLORS["Unknown"],
-                  isSelected
-                    ? "ring-2 ring-blue-500 shadow-md scale-[1.02]"
-                    : "hover:scale-[1.01]",
-                )}
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    <Icon size={14} />
-                    <span>{alert.category}</span>
-                    <span>•</span>
-                    <span>{alert.severity}</span>
-                  </div>
-                  <span className="text-xs text-slate-400 whitespace-nowrap">
-                    {formatDate(alert.sent)}
-                  </span>
-                </div>
-
-                <h3 className="font-semibold text-slate-800 dark:text-slate-100 leading-tight mb-1 line-clamp-2">
-                  {alert.title}
-                </h3>
-
-                {alert.timeline && alert.timeline.length > 1 && (
-                  <div className="flex items-center gap-1 mb-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
-                    <History size={12} />
-                    <span>{alert.timeline.length} updates</span>
-                  </div>
-                )}
-
-                <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2">
-                  {alert.description}
-                </p>
-              </div>
-            );
-          })
+          <List
+          listRef={listRef}
+          rowCount={alerts.length}
+          rowHeight={ITEM_HEIGHT}
+          rowComponent={AlertItem}
+          rowProps={rowProps}
+          style={{ height: listHeight }}
+        />
         )}
       </div>
 
