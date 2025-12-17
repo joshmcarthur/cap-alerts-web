@@ -96,8 +96,20 @@ export class DataProcessor {
       for (let i = 0; i < csvData.length; i++) {
         try {
           const row = csvData[i];
+
+          // Try to process as CAP XML first
           if (row.content && row.content.trim()) {
             const alert = this.processCapRow(row, i);
+            if (alert) {
+              alerts.push(alert);
+              continue; // Successfully processed, move to next row
+            }
+          }
+
+          // If no XML content but we have other metadata, create a basic alert
+          // This handles rows that don't have CAP XML but have alert information
+          if (row.title || row.summary || row.guid) {
+            const alert = this.createAlertFromMetadata(row, i);
             if (alert) {
               alerts.push(alert);
             }
@@ -137,10 +149,10 @@ export class DataProcessor {
         delimiter: ",",
         newline: "\n",
         transformHeader: (header) => header.trim(),
-        transform: (value) => {
-          // Clean up the value by removing extra whitespace
-          return typeof value === "string" ? value.trim() : value;
-        },
+        // Remove the transform function that trims values - this can break multi-line XML
+        // transform: (value) => {
+        //   return typeof value === "string" ? value.trim() : value;
+        // },
       });
 
       if (result.errors && result.errors.length > 0) {
@@ -167,15 +179,18 @@ export class DataProcessor {
    */
   static processCapRow(row, index) {
     try {
-      // Extract CAP XML from content field
+      // Extract CAP XML from content field - don't trim here as it may contain multi-line XML
       const capXml = row.content;
-      if (!capXml || !capXml.includes("<alert")) {
+      if (!capXml || typeof capXml !== "string" || !capXml.includes("<alert")) {
         console.warn(`Row ${index}: No valid CAP XML found`);
         return null;
       }
 
+      // Trim only after checking for XML content
+      const trimmedXml = capXml.trim();
+
       // Parse CAP XML
-      const capData = this.parseCapXml(capXml);
+      const capData = this.parseCapXml(trimmedXml);
       if (!capData) {
         console.warn(`Row ${index}: Failed to parse CAP XML`);
         return null;
@@ -641,6 +656,68 @@ Parse CAP XML using DOMParser
     }
 
     return result;
+  }
+
+  /**
+ * Create a basic alert from CSV metadata when XML content is not available
+ * @param {Object} row - CSV row object
+ * @param {number} index - Row index for ID generation
+ * @returns {Object|null} Normalized alert object or null if invalid
+ */
+  static createAlertFromMetadata(row, index) {
+    try {
+      // Generate unique ID
+      const id = row.guid || `alert-${index}`;
+
+      // Parse date
+      const sent = this.parseDate(row.pubDate) || new Date();
+
+      // Create basic alert object
+      const alert = {
+        id: id,
+        identifier: row.guid || id,
+        title: row.title || "Untitled Alert",
+        description: row.summary || "",
+
+        // Default values for required fields
+        category: AlertCategory.OTHER,
+        event: "Unknown Event",
+        urgency: AlertUrgency.UNKNOWN,
+        severity: AlertSeverity.UNKNOWN,
+        certainty: AlertCertainty.UNKNOWN,
+        status: AlertStatus.ACTUAL,
+        msgType: MessageType.ALERT,
+
+        // Sender information
+        sender: row.author || "Unknown Sender",
+        senderName: row.author || "Unknown",
+        source: "",
+
+        // Temporal information
+        sent: sent,
+        effective: null,
+        expires: null,
+
+        // Geographic information - no area data available
+        areaDesc: "Unknown Area",
+        polygon: null,
+
+        // Additional metadata
+        originalXml: "",
+        language: "en-US",
+        references: "",
+
+        // Computed fields
+        hasGeometry: false,
+        isExpired: false,
+        isCancelled: false,
+      };
+
+      return alert;
+    } catch (error) {
+      console.warn(`Error creating alert from metadata:`, error.message);
+      return null;
+    }
   }
 }
 
